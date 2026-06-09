@@ -6,13 +6,13 @@ services:
     network_mode: host
     volumes:
      - clickhouse_data:/var/lib/clickhouse
-     - ./clickhouse-config.xml:/etc/clickhouse-server/config.d/custom.xml:ro
+     - ./clickhouse-config.xml:/etc/clickhouse-server/config.d/custom.xml:ro,z
   flow-reciever:
-    image:  pmacct/sfacctd:latest
+    image:  pmacct/nfacctd:latest
     restart: always
     network_mode: host
     volumes:
-      - ./nfacctd.conf:/etc/pmacct/nfacctd.conf:ro
+      - ./nfacctd.conf:/etc/pmacct/nfacctd.conf:ro,z
     depends_on:
      - clickhouse
   grafana:
