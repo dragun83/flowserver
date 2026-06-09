@@ -1,14 +1,14 @@
-## Простая (я надеюсь) сборка для контроля трафика netflow с визуализацией через grafana
+# Простая (я надеюсь) сборка для контроля трафика netflow с визуализацией через grafana
 
 Надеюсь удастся обойтись без кода. Стандартными средствами. Но есть предчувствие, что нет.
 
 ### Инициализация БД
 
-# Зайти в контейнер ClickHouse
+#### Зайти в контейнер ClickHouse
 ```
 docker exec -it clickhouse clickhouse-client
 ```
-# Создать таблицу
+#### Создать таблицу
 ```
 CREATE TABLE IF NOT EXISTS netflow (
     stamp_inserted DateTime DEFAULT now(),
@@ -28,7 +28,7 @@ PARTITION BY toYYYYMMDD(stamp_inserted)
 ORDER BY (stamp_inserted, src_ip, dst_ip)
 TTL stamp_inserted + INTERVAL 90 DAY;
 ```
-# Проверка (должно вернуть 0)
+#### Проверка (должно вернуть 0)
 ```
 SELECT count() FROM netflow;
 ```
