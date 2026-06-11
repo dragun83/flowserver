@@ -3,33 +3,43 @@ services:
     image: clickhouse/clickhouse-server
     container_name: clickhouse
     restart: always
-    network_mode: host
     volumes:
      - clickhouse_data:/var/lib/clickhouse
      - ./clickhouse-config.xml:/etc/clickhouse-server/config.d/custom.xml:ro,z
+    networks:
+      - flow-net
   flow-reciever:
     image:  pmacct/nfacctd:latest
     restart: always
-    network_mode: host
+    ports:
+      - "2055:2055/udp"
     volumes:
       - ./nfacctd.conf:/etc/pmacct/nfacctd.conf:ro,z
+      - ./netflow:/netflow:rw,z
+    networks:
+      - flow-net
     depends_on:
      - clickhouse
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
-    network_mode: host
+    ports:
+      - "3000:3000/tcp"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=Qwe12345@!
       - GF_SECURITY_ADMIN_USER=dragun
       - GF_INSTALL_PLUGINS=grafana-clickhouse-datasource
     volumes:
       - grafana_datastorage:/var/lib/grafana
+    networks:
+      - flow-net
     depends_on:
       - clickhouse
 
-
+networks:
+  flow-net:
+    driver: bridge
 
 volumes:
   clickhouse_data:
