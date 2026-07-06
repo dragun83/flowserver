@@ -18,22 +18,40 @@ class NetFlowV9Listener:
     def __init__(self,ip_addr:str = "0.0.0.0", port:int = 2055):
         self.__port = port
         self.__ip_addr = ip_addr
+        self.__udp_buf_size = 4096
         self.__log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.__soc = None
         self.__parser_templ = {"netflow":{}, "ipfix":{}}
         self.__dataset_buffer = {}
         self.__dataset_max_buf_size = 20000
+        self.__is_running = False
 
-    def  start(self):
+    async def start(self):
         """
         Запускаем слушатель.
         """
         self.__log.info(f"Запускаем сервер на адресе: {self.__ip_addr}, порт: {self.__port}")
         self.__soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__soc.bind((self.__ip_addr, self.__port))
+        self.__is_running = True
+
+    async def listen(self):
         loop = asyncio.get_event_loop()
 
-    def parse_packet(self, packet:bytes, src_ip:str):
+        while self.__is_running:
+            try:
+                data, src_ip = await loop.sock_recvfrom(self.__soc, self.__udp_buf_size)
+                if data:
+                    net_flow_data = await self.parse_packet(data, str(src_ip))
+                    self.__log.debug(f"Получили пакет в асинхронном режиме {net_flow_data}")
+            except socket.error as e:
+                self.__log.error(f" Ошибка сокета {e}")
+                break
+            except Exception as e:
+                self.__log.warning(f"Неожиданная ошибка {e}")
+
+
+    async def parse_packet(self, packet:bytes, src_ip:str):
         """
         Метод парсит пакет NetFlow
         Вызывается при получени пакета асингхронным слушателем. Возвращает содержимое пакета, если есть шаблон, пополняет справочник шаблонов,
@@ -91,25 +109,22 @@ def main_test(address:str, port:int):
         s.close()
         print(f"Stop!")
 
-def main_class_test():
+async def main_class_test():
     # Настроем логирование. Тут можно покрутить формат вывода данных - для этого все уже есть.
     root_logger = logging.getLogger()
     root_logger.handlers.clear()
     log_handler = logging.StreamHandler()
     root_logger.addHandler(log_handler)
-    root_logger.setLevel(logging.INFO)
+    root_logger.setLevel(logging.DEBUG)
 
     listener = NetFlowV9Listener()
-    listener.start()
-    lnr_soc = listener.get_sock()
-    while True:
-        data, src_ip = lnr_soc.recvfrom(4096)
-        if data:
-            netflow_data = listener.parse_packet(data, str(src_ip))
-            if netflow_data != None:
-                print(f"Класс вроде как работает. Получили {netflow_data.header.source_id}. Там содержатся данные {netflow_data.flows}")
+    await listener.start()
+    await listener.listen()
+
+
+
 
 
 if __name__ == "__main__":
     #main_test("0.0.0.0", 2055)
-    main_class_test()
+    asyncio.run(main_class_test())
