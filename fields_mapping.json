@@ -1,0 +1,90 @@
+{
+  "netflow_v9": {
+    "template_fields": {
+      "IN_BYTES": {
+        "db_field": "bytes_in",
+        "type": "integer",
+        "description": "Количество входящих байт"
+      },
+      "OUT_BYTES": {
+        "db_field": "bytes_out",
+        "type": "integer",
+        "description": "Количество исходящих байт"
+      },
+      "IN_PKTS": {
+        "db_field": "packets_in",
+        "type": "integer",
+        "description": "Количество входящих пакетов"
+      },
+      "OUT_PKTS": {
+        "db_field": "packets_out",
+        "type": "integer",
+        "description": "Количество исходящих пакетов"
+      },
+      "IPV4_SRC_ADDR": {
+        "db_field": "src_ip",
+        "type": "string",
+        "description": "IP адрес источника"
+      },
+      "IPV4_DST_ADDR": {
+        "db_field": "dst_ip",
+        "type": "string",
+        "description": "IP адрес назначения"
+      },
+      "L4_SRC_PORT": {
+        "db_field": "src_port",
+        "type": "integer",
+        "description": "Порт источника"
+      },
+      "L4_DST_PORT": {
+        "db_field": "dst_port",
+        "type": "integer",
+        "description": "Порт назначения"
+      },
+      "PROTOCOL": {
+        "db_field": "protocol",
+        "type": "integer",
+        "description": "Протокол (TCP, UDP и т.д.)"
+      },
+      "TCP_FLAGS": {
+        "db_field": "tcp_flags",
+        "type": "integer",
+        "description": "TCP флаги"
+      },
+      "SRC_AS": {
+        "db_field": "src_as",
+        "type": "integer",
+        "description": "AS источника"
+      },
+      "DST_AS": {
+        "db_field": "dst_as",
+        "type": "integer",
+        "description": "AS назначения"
+      },
+      "INPUT_SNMP": {
+        "db_field": "input_iface",
+        "type": "integer",
+        "description": "Интерфейс входа"
+      },
+      "OUTPUT_SNMP": {
+        "db_field": "output_iface",
+        "type": "integer",
+        "description": "Интерфейс выхода"
+      },
+      "LAST_SWITCHED": {
+        "db_field": "last_seen",
+        "type": "timestamp",
+        "description": "Время последнего переключения"
+      },
+      "FIRST_SWITCHED": {
+        "db_field": "first_seen",
+        "type": "timestamp",
+        "description": "Время первого переключения"
+      }
+    },
+    "template_defaults": {
+      "source_id": 0,
+      "export_time": "current_timestamp"
+    }
+  }
+}

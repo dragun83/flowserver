@@ -2,9 +2,9 @@ import socket
 import logging
 import asyncio
 import netflow
-import datetime
 from netflow import v9
 
+#TODO  Починить остановку. сейчас падает с ошибкой.
 
 
 
@@ -22,8 +22,8 @@ class NetFlowV9Listener:
         self.__log = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self.__soc = None
         self.__parser_templ = {"netflow":{}, "ipfix":{}}
-        self.__dataset_buffer = {}
-        self.__dataset_max_buf_size = 20000
+        self.__dataset_buffer = []
+        self.__dataset_max_buf_size = 2000
         self.__is_running = False
 
     async def start(self):
@@ -43,13 +43,21 @@ class NetFlowV9Listener:
                 data, src_ip = await loop.sock_recvfrom(self.__soc, self.__udp_buf_size)
                 if data:
                     net_flow_data = await self.parse_packet(data, str(src_ip))
-                    self.__log.debug(f"Получили пакет в асинхронном режиме {net_flow_data}")
+                    if len(self.__dataset_buffer) < self.__dataset_max_buf_size and net_flow_data != None:
+                        self.__dataset_buffer.append(net_flow_data)
+                        self.__log.debug(f"Записали dataset  в буфер. Размер буфера {len(self.__dataset_buffer)}")
+                    elif net_flow_data != None:
+                        self.__dataset_buffer.pop(0)
+                        self.__dataset_buffer.append(net_flow_data)
+                        self.__log.debug(f"Записали dataset  в буфер и удалили 1 старую запись. Размер буфера {len(self.__dataset_buffer)}")
+                    else:
+                        self.__log.debug(f"Получен пустой пакет - пропускаем. В буфер не кладем. Размер {len(self.__dataset_buffer)}")
+                        pass
             except socket.error as e:
                 self.__log.error(f" Ошибка сокета {e}")
                 break
             except Exception as e:
                 self.__log.warning(f"Неожиданная ошибка {e}")
-
 
     async def parse_packet(self, packet:bytes, src_ip:str):
         """
@@ -61,70 +69,40 @@ class NetFlowV9Listener:
         try:
             netflow_data = netflow.parse_packet(packet,self.__parser_templ)
             self.__log.debug(f"Получили пакет от {src_ip}, содержимое {netflow_data.flows}")
-            return netflow_data
+            if len(netflow_data.flows) > 0:
+                return netflow_data
+            else:
+                return None
         except v9.V9TemplateNotRecognized:
              self.__log.warning(f"Не удалось распарсить пакет от {src_ip}. Не обнаружен шаблон. Продолжаем")
              return None
 
-
-    def stop(self):
+    async def stop(self):
         self.__log.info("Останавливаем сервер.")
+        self.__is_running = False
         if self.__soc != None:
             self.__soc.close
             self.__soc = None
         else:
             pass
 
-    def get_sock(self):
-        return self.__soc
+    def get_dataset_buffer(self):
+        """
+        Метод возвращает буфер датасетов без очистки буфера. (А нужен ли такой метод?)
+        """
+        return self.__dataset_buffer
 
-def print_all_records(flowset:list):
-    """
-    Тестовая функция печатает все данные в удобном формате
-    На вход получаем список словарей flowset
-    """
-    print(f"Длинна flowset: {len(flowset)}\n" )
-    for datarecord in flowset:
-#        print(f"Содержание datarecord:  {datarecord.data.keys()}\n")
-        print(f"Содержание datarecord:  {datarecord}\n")
+    def clear_dataset_buffer(self):
+        """
+        Метод очищает буфер датасетов
+        """
+        self.__dataset_buffer = []
 
+    def pop_dataset_buffer(self):
+        """
+        Метод возвращает буфер датасетов и очищает его.
+        """
+        ds_buffer = self.__dataset_buffer
+        self.__dataset_buffer = []
+        return ds_buffer
 
-def main_test(address:str, port:int):
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.bind((address, port))
-    v9_templ = {"netflow":{}, "ipfix":{}}
-    try:
-        while True:
-            data, src_ip = s.recvfrom(4096)
-            if data:
-                try:
-                    net_flow_data = netflow.parse_packet(data,v9_templ)
-                    print_all_records(net_flow_data.flows)
-                except v9.V9TemplateNotRecognized:
-                    print(f"Не удалось получить \033[9mпакет с пакетами\033[0m шаблон. Продолжаем.")
-                    continue
-                except Exception as e:
-                    print(f"Падаем с ошибкой {e}")
-    except Exception:
-        s.close()
-        print(f"Stop!")
-
-async def main_class_test():
-    # Настроем логирование. Тут можно покрутить формат вывода данных - для этого все уже есть.
-    root_logger = logging.getLogger()
-    root_logger.handlers.clear()
-    log_handler = logging.StreamHandler()
-    root_logger.addHandler(log_handler)
-    root_logger.setLevel(logging.DEBUG)
-
-    listener = NetFlowV9Listener()
-    await listener.start()
-    await listener.listen()
-
-
-
-
-
-if __name__ == "__main__":
-    #main_test("0.0.0.0", 2055)
-    asyncio.run(main_class_test())
